@@ -27,6 +27,7 @@ using SpellEditor.Sources.Binding;
 using System.Diagnostics;
 using System.Threading;
 using System.Globalization;
+using SpellEditor.Sources.BLP;
 
 namespace SpellEditor
 {
@@ -1779,8 +1780,13 @@ namespace SpellEditor
                 var iconId = uint.Parse(row[2].ToString());
                 if (iconId > 0)
                 {
-                    image.ToolTip = iconId.ToString();
-                    image.IsVisibleChanged += IsSpellListEntryVisibileChanged;
+                    image.Width = 32;
+                    image.Height = 32;
+                    image.Margin = new Thickness(1, 1, 1, 1);
+                    var filePath = loadIcons.GetIconPath(iconId) + ".blp";
+                    image.ToolTip = filePath;
+                    image.Source = BlpManager.GetInstance().GetSourceForImagePath(filePath);
+                    //image.IsVisibleChanged += IsSpellListEntryVisibileChanged;
                     var stackPanel = new StackPanel() { Orientation = Orientation.Horizontal };
                     stackPanel.Children.Add(image);
                     stackPanel.Children.Add(textBlock);
@@ -1788,8 +1794,7 @@ namespace SpellEditor
                 }
             }
             SpellsLoadedLabel.Content = "Highest Spell ID Loaded: " + collection[collection.Count - 1][0].ToString();
-            foreach (var element in newElements)
-                SelectSpell.Items.Add(element);
+            SelectSpell.ItemsSource = newElements;
             watch.Stop();
             Console.WriteLine($"Worker progress change event took {watch.ElapsedMilliseconds}ms to handle");
         }
@@ -1799,31 +1804,6 @@ namespace SpellEditor
             if (!(bool)args.NewValue)
                 return;
             var image = o as Image;
-            var iconId = uint.Parse(image.ToolTip.ToString());
-            var filePath = loadIcons.GetIconPath(iconId) + ".blp";
-            try
-            {
-                using (var fileStream = new FileStream(filePath, FileMode.Open))
-                {
-                    using (var blpImage = new SereniaBLPLib.BlpFile(fileStream))
-                    {
-                        using (var bit = blpImage.getBitmap(0))
-                        {
-                            image.Width = 32;
-                            image.Height = 32;
-                            image.Margin = new Thickness(1, 1, 1, 1);
-                            image.Source = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
-                                bit.GetHbitmap(), IntPtr.Zero, Int32Rect.Empty,
-                                BitmapSizeOptions.FromWidthAndHeight(bit.Width, bit.Height));
-                            //image.UpdateLayout();
-                        }
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                Console.WriteLine($"[SpellSelectList] WARNING Unable to load image: {filePath}");
-            }
         }
 
         private DataRowCollection GetSpellNames(uint lowerBound, uint pageSize, int locale)
